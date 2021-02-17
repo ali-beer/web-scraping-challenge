@@ -20,7 +20,7 @@ def scrape_info():
 
     # Time delay for landing page 1 second 
     browser.is_element_present_by_css("ul.item_list li.slide", wait_time=1)
-    # time.sleep(1) - allow 1 second for complete page content to be loaded
+    time.sleep(1)
 
     # Create a Beautiful Soup object
     html = browser.html # grab the current page html
@@ -55,84 +55,73 @@ def scrape_info():
     browser.visit(url)
 
     # Splinter interacting with browser - click 'full image' 'button'
-    browser.click_link_by_partial_text('FULL IMAGE')
-
-    # Splinter interacting with browser - click 'more info' 'button'
-    browser.click_link_by_partial_text('more info')
+    full_image = browser.find_by_css('h2.mb-3')
+    full_image.click()
 
     # Create a Beautiful Soup object (Scrape page into Soup)
     html = browser.html
     soup = bs(html, 'html.parser')
 
     # Find the image url
-    image = soup.find_all('div', class_="download_tiff")
-
-    # Use square brackets to grab href
-    thread = image[1]
-    featured_image_url = thread.find('a')['href']
+    image_url = soup.find('img', class_="BaseImage")['src']
 
     ## Mars Facts
     # Use read_html function in Pandas to scrape tabular data from page
     url = 'https://space-facts.com/mars/'
-    tables = pd.read_html(url)
-
-    # Use indexing to slice off the df containing facts about the planet including Diameter, Mass, etc.
-    mars_df = tables[0]
+    tables = pd.read_html(url)[0]
 
     # Rename columns
-    df = mars_df.rename(columns={0: "Facts", 1: "Mars"})
+    mars_df = df.rename(columns={0: "Facts", 1: "Mars"})
 
     # Set the index
-    df.set_index("Facts", inplace=True)
+    mars_df.set_index("Facts", inplace=True)
 
     # Use Pandas to_html method to generate html table from df
-    html_table = df.to_html()
+    html_table = mars_df.to_html()
 
     # Strip unwanted new lines to clean up the table
     html_table = html_table.replace('\n', '')
-
-    # Save the table directly to a file for displaying on webpage later
-    # df.to_html('table.html')
 
     # Mars Hemispheres
     # URL of pages to be scraped
     url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
     browser.visit(url)
 
-    # Create the list for the 4 hemisphere dicts 
-    hemisphere_image_urls = []
+    # Create the list for the 4 hemispheres 
+    hemisphere_images = []
 
-    # First, get a list of all of the hemispheres
+    # Get a list of the links
     links = browser.find_by_css("a.product-item h3")
 
-    # Next, loop through those links, click the link, find the sample anchor, return the href
+    # Loop through, click link, find sample anchor and get the href
     for i in range(len(links)):
         
         hemisphere = {}
         
         # Find the elements on each loop to avoid a stale element exception
         browser.find_by_css("a.product-item h3")[i].click()
+        time.sleep(1)
         
-        # Next, find the Sample image anchor tag and extract the href
+        # Find the Sample image anchor tag and get the href
         sample_elem = browser.links.find_by_text('Sample').first
         hemisphere['img_url'] = sample_elem['href']
         
-        # Get Hemisphere title
+        # Get the title
         hemisphere['title'] = browser.find_by_css("h2.title").text
         
-        # Append hemisphere dict to list
-        hemisphere_image_urls.append(hemisphere)
+        # Append object to list
+        hemisphere_images.append(hemisphere)
         
         # Navigate backwards and complete for remaining hemisphere's
         browser.back()
 
     # Store data in a dictionary
     mars_data = {
-        "Latest news title": latest_title,
-        "Latest news paragraph": news_p,
-        "Featured image": featured_image_url,
-        "html table": html_table,
-        "Hemisphere image urls": hemisphere_image_urls
+        "latest_title": latest_title,
+        "news_p": news_p,
+        "featured_image": image_url,
+        "table": html_table,
+        "hemispheres": hemisphere_images
     }
 
     # Close the browser after scraping
